@@ -65,12 +65,12 @@ const saveToFile = (monsterdata) => {
     });
 };
 
-// 레벨 분포 조회 함수 (30씩 끊어서 그룹화)
+// 레벨 분포 조회 함수 (30씩 끊어서)
 const getLevelDistribution = async (conn) => {
     const [rows] = await conn.execute(`select level from monster_`);
     
-    // 레벨 30씩 그룹화
-    const levelDistribution = Array(9).fill(0); // 1~30, 31~60, ..., 241~270, 271+ 로 나누어짐
+    // 레벨 30씩
+    const levelDistribution = Array(9).fill(0); // 1~30, 31~60, ..., 241+ 로 나누어짐
     rows.forEach(row => {
         const level = row.level;
         const groupIndex = Math.floor(level / 30);
@@ -82,7 +82,7 @@ const getLevelDistribution = async (conn) => {
     return levelDistribution;
 };
 
-// 레벨 분포 시각화 함수
+// 레벨 분포 한 눈에 보기 쉽게게
 const visualizeLevelDistribution = async (levelDistribution) => {
     const width = 800; // 이미지 너비
     const height = 600; // 이미지 높이
