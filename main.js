@@ -16,7 +16,7 @@ const connect = async () => {
 const createTableIfNotExists = async (conn) => {
     try {
         await conn.execute(`
-            create table if not exists monster (
+            create table if not exists monster_ (
                 id int auto_increment primary key,
                 name text not null,
                 level int,
@@ -79,7 +79,7 @@ const insert = async () => {
     try {
         await conn.beginTransaction();
         await conn.execute(
-            `INSERT INTO maple_monster (name, level, hp) VALUES (?, ?, ?)`,
+            `insert into monster_ (name, level, hp) VALUES (?, ?, ?)`,
             [monsterdata.name, monsterdata.level, monsterdata.hp]
         );
         await conn.commit();
