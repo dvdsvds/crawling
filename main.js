@@ -45,7 +45,7 @@ const getMonster = async (url) => {
         const firstBody = $("section.pi-smart-group-body").first();
         const level = firstBody.find("[data-source='레벨']").text().trim() || "정보 없음";
         const hp = firstBody.find("[data-source='HP']").text().trim() || "정보 없음";
-        const exp = firstBody.find("[data-source='EXP']").text().trim() || "정보 없음";
+        const exp = firstBody.find("[data-source='EXP']").text().trim() || "정보 없음"; // 넣었다 개쉐이야
 
         return { name, level, hp, exp };
     } catch (error) {
