@@ -47,7 +47,7 @@ const getMonster = async (url) => {
 const insert = async () => {
     const conn = await connect();
     await createTableIfNotExists(conn);
-    
+
     const answers = await inquirer.prompt([
         {
             type: 'input',
@@ -55,22 +55,41 @@ const insert = async () => {
             message: '몬스터 데이터를 가져올 URL을 입력하세요: '
         }
     ]);
-    
+
     const { url } = answers;
     const monsterdata = await getMonster(url);
-    
+
     if (!monsterdata) {
         console.log("데이터 가져오기 실패");
         return;
     }
 
-    await conn.execute(
-        `INSERT INTO maple_monster (name, level, hp) VALUES (?, ?, ?)`,
-        [monsterdata.name, monsterdata.level, monsterdata.hp]
+    // 이미 데이터베이스에 해당 몬스터가 존재하는지 확인
+    const [existingMonster] = await conn.execute(
+        `SELECT * FROM maple_monster WHERE name = ?`,
+        [monsterdata.name]
     );
-    
-    console.log("몬스터 정보가 삽입되었습니다.");
-    await conn.end();
+
+    if (existingMonster.length > 0) {
+        console.log("이미 데이터베이스에 존재하는 몬스터입니다.");
+        await conn.end();
+        return;
+    }
+
+    try {
+        await conn.beginTransaction();
+        await conn.execute(
+            `INSERT INTO maple_monster (name, level, hp) VALUES (?, ?, ?)`,
+            [monsterdata.name, monsterdata.level, monsterdata.hp]
+        );
+        await conn.commit();
+        console.log("몬스터 정보가 삽입되었습니다.");
+    } catch (err) {
+        await conn.rollback();
+        console.error("데이터 삽입 중 오류 발생:", err);
+    } finally {
+        await conn.end();
+    }
 };
 
 inquirer.prompt([
