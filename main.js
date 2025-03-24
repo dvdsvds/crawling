@@ -124,7 +124,7 @@ const visualizeLevelDistribution = async (levelDistribution) => {
     const image = await chartJSNodeCanvas.renderToBuffer(configuration);
     const filePath = path.join(__dirname, 'level_distribution.png');
     fs.writeFileSync(filePath, image);
-    console.log('레벨 분포 그래프가 level_distribution.png로 저장되었습니다.');
+    console.log('-> level_distribution.png');
 };
 
 // 몬스터 정보 삽입 함수
