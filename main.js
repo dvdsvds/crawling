@@ -25,7 +25,8 @@ const createTableIfNotExists = async (conn) => {
                 id int auto_increment primary key,
                 name text not null,
                 level int,
-                hp int
+                hp int,
+                exp int
             )
         `);
     } catch (err) {
@@ -44,8 +45,9 @@ const getMonster = async (url) => {
         const firstBody = $("section.pi-smart-group-body").first();
         const level = firstBody.find("[data-source='레벨']").text().trim() || "정보 없음";
         const hp = firstBody.find("[data-source='HP']").text().trim() || "정보 없음";
+        const exp = firstBody.find("[data-source='EXP']").text().trim() || "정보 없음";
 
-        return { name, level, hp };
+        return { name, level, hp, exp };
     } catch (error) {
         console.error("몬스터 데이터를 가져오는 중 오류 발생:", error);
     }
@@ -54,7 +56,7 @@ const getMonster = async (url) => {
 // 몬스터 정보를 텍스트 파일에 저장하는 함수
 const saveToFile = (monsterdata) => {
     const filePath = 'monster_data.txt'; // 저장할 파일 경로
-    const data = `name: ${monsterdata.name}\nlevel: ${monsterdata.level}\nhp: ${monsterdata.hp}\n\n`;
+    const data = `name: ${monsterdata.name}\nlevel: ${monsterdata.level}\nhp: ${monsterdata.hp}\n exp: ${monsterdata.exp}\n`;
 
     fs.appendFile(filePath, data, (err) => {
         if (err) {
@@ -163,7 +165,7 @@ const insert = async () => {
     try {
         await conn.beginTransaction();
         await conn.execute(
-            `insert into monster_ (name, level, hp) values (?, ?, ?)`,
+            `insert into monster_ (name, level, hp, exp) values (?, ?, ?)`,
             [monsterdata.name, monsterdata.level, monsterdata.hp]
         );
         await conn.commit();
@@ -194,6 +196,41 @@ const displayLevelDistribution = async () => {
     }
 };
 
+// 사용자 레벨에 맞는 몬스터 추천 함수
+const recommendMonster = async (conn) => {
+    const answers = await inquirer.prompt([
+        {
+            type: 'input',
+            name: 'level',
+            message: '추천하고 싶은 레벨을 입력하세요: ',
+            validate: (input) => {
+                const level = parseInt(input, 10);
+                if (isNaN(level) || level <= 0) {
+                    return '유효한 레벨을 입력하세요.';
+                }
+                return true;
+            }
+        }
+    ]);
+
+    const level = parseInt(answers.level, 10);
+
+    // 해당 레벨에 맞는 몬스터를 조회 (레벨 +- 5로 설정)
+    const [monsters] = await conn.execute(
+        `SELECT * FROM monster_ WHERE level BETWEEN ? AND ?`,
+        [level - 5, level + 5]
+    );
+
+    if (monsters.length === 0) {
+        console.log("해당 레벨에 맞는 몬스터가 없습니다.");
+    } else {
+        console.log(`레벨 ${level}에 맞는 몬스터 추천:`);
+        monsters.forEach(monster => {
+            console.log(`- ${monster.name} (Level: ${monster.level}, HP: ${monster.hp}, , EXP: ${monster.exp})`);
+        });
+    }
+};
+
 // 사용자 입력 받기
 inquirer.prompt([
     {
@@ -202,10 +239,13 @@ inquirer.prompt([
         message: '>:' 
     }
 ]).then(answers => {
+    const conn = connect();
+
     if (answers.command.toLowerCase() === 'insert') {
         insert();
-    } else if (answers.command.toLowerCase() === 'visualize') {
+    } else if (answers.command.toLowerCase() === 'visual') {
         displayLevelDistribution();
+    } else if (answers.command.toLowerCase() === 'recommend') {
+        recommendMonster(conn);
     }
 });
-
