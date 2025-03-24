@@ -1,32 +1,28 @@
-const r = require('rethinkdb');
+require('dotenv').config();
+const mysql = require('mysql2/promise');
 const axios = require('axios');
 const cheerio = require('cheerio');
-const {default: inquirer} = require("inquirer");
+const { default: inquirer } = require("inquirer");
 
-const connect = () => {
-    return new Promise((resolve, reject) => {
-        r.connect({host : 'localhost', port : 28015}, (err, conn) => {
-            if(err) {
-                reject(err);
-            } else {
-                resolve(conn);
-            }
-        });
+const connect = async () => {
+    return await mysql.createConnection({
+        host: process.env.DB_HOST,
+        user: process.env.DB_USER,
+        password: process.env.DB_PASSWORD,
+        database: process.env.DB_NAME
     });
 };
 
 const createTableIfNotExists = async (conn) => {
     try {
-        if(!conn) {
-            throw new Error('연결이 원활하지 않습니다.');
-    }
-
-        const tableList = await r.db('test').tableList().run(conn);
-        if (!tableList.includes('maple_monster')) {
-            console.log('테이블이 존재하지 않아, 테이블을 생성합니다...');
-            await r.db('test').tableCreate('maple_monster').run(conn);
-            console.log('테이블이 생성되었습니다.');
-        }
+        await conn.execute(`
+            CREATE TABLE IF NOT EXISTS maple_monster (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                name VARCHAR(255) NOT NULL,
+                level VARCHAR(50),
+                hp VARCHAR(50)
+            )
+        `);
     } catch (err) {
         console.error('테이블 생성 중 오류 발생:', err);
     }
@@ -37,54 +33,54 @@ const getMonster = async (url) => {
         const html = await axios.get(url);
         const $ = cheerio.load(html.data);
 
-        const name = $("aside.portable-infobox").find("[data-source='이름']").text()
-
+        const name = $("aside.portable-infobox").find("[data-source='이름']").text();
         const firstBody = $("section.pi-smart-group-body").first();
         const level = firstBody.find("[data-source='레벨']").text().trim() || "정보 없음";
         const hp = firstBody.find("[data-source='HP']").text().trim() || "정보 없음";
 
-        const result = { name, level, hp };
-
-        return result;
-
-
+        return { name, level, hp };
     } catch (error) {
-        console.error(error);
+        console.error("몬스터 데이터를 가져오는 중 오류 발생:", error);
     }
 };
 
-
-const insert = async() => {
+const insert = async () => {
     const conn = await connect();
     await createTableIfNotExists(conn);
+    
     const answers = await inquirer.prompt([
         {
-            type:'input',
-            name:'url',
-            message:'몬스터 데이터를 가져올 URL을 입력하세요 : '
+            type: 'input',
+            name: 'url',
+            message: '몬스터 데이터를 가져올 URL을 입력하세요: '
         }
     ]);
-    const {url} = answers;
+    
+    const { url } = answers;
     const monsterdata = await getMonster(url);
-    if(!monsterdata) {
+    
+    if (!monsterdata) {
         console.log("데이터 가져오기 실패");
         return;
     }
 
-    const result = await r.db('test').table('maple_monster').insert(monsterdata).run(conn);
-    console.log('몬스터 정보가 삽입되었습니다.', result);
+    await conn.execute(
+        `INSERT INTO maple_monster (name, level, hp) VALUES (?, ?, ?)`,
+        [monsterdata.name, monsterdata.level, monsterdata.hp]
+    );
+    
+    console.log("몬스터 정보가 삽입되었습니다.");
+    await conn.end();
+};
 
-
-}
 inquirer.prompt([
     {
-        type:'input',
-        name:'command',
-        message:'>:'
+        type: 'input',
+        name: 'command',
+        message: '>:'
     }
 ]).then(answers => {
-    if(answers.command.toLowerCase() === 'insert') {
+    if (answers.command.toLowerCase() === 'insert') {
         insert();
     }
 });
-
