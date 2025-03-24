@@ -67,7 +67,7 @@ const insert = async () => {
 
     // 이미 데이터베이스에 해당 몬스터가 존재하는지 확인
     const [existingMonster] = await conn.execute(
-        `SELECT * FROM maple_monster WHERE name = ?`,
+        `select * from maple_monster where name = ?`,
         [monsterdata.name]
     );
 
