@@ -64,10 +64,21 @@ const saveToFile = (monsterdata) => {
     });
 };
 
-// 레벨 분포 조회 함수
+// 레벨 분포 조회 함수 (30씩 끊어서 그룹화)
 const getLevelDistribution = async (conn) => {
-    const [rows] = await conn.execute(`select level, count(*) as count from monster_ group by level`);
-    return rows;
+    const [rows] = await conn.execute(`select level from monster_`);
+    
+    // 레벨 30씩 그룹화
+    const levelDistribution = Array(9).fill(0); // 1~30, 31~60, ..., 241~270, 271+ 로 나누어짐
+    rows.forEach(row => {
+        const level = row.level;
+        const groupIndex = Math.floor(level / 30);
+        if (groupIndex < levelDistribution.length) {
+            levelDistribution[groupIndex]++;
+        }
+    });
+
+    return levelDistribution;
 };
 
 // 레벨 분포 시각화 함수
@@ -76,8 +87,11 @@ const visualizeLevelDistribution = async (levelDistribution) => {
     const height = 600; // 이미지 높이
     const chartJSNodeCanvas = new ChartJSNodeCanvas({ width, height });
 
-    const labels = levelDistribution.map(item => item.level);
-    const data = levelDistribution.map(item => item.count);
+    const labels = [
+        '1-30', '31-60', '61-90', '91-120', '121-150', 
+        '151-180', '181-210', '211-240', '241+'
+    ];
+    const data = levelDistribution;
 
     const configuration = {
         type: 'bar',
@@ -194,5 +208,3 @@ inquirer.prompt([
     }
 });
 
-    }
-});
