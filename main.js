@@ -39,6 +39,7 @@ const getMonster = async (url) => {
         const html = await axios.get(url);
         const $ = cheerio.load(html.data);
 
+        // 새끼야 경험치 넣으라고
         const name = $("aside.portable-infobox").find("[data-source='이름']").text();
         const firstBody = $("section.pi-smart-group-body").first();
         const level = firstBody.find("[data-source='레벨']").text().trim() || "정보 없음";
