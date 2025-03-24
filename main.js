@@ -3,6 +3,7 @@ const mysql = require('mysql2/promise');
 const axios = require('axios');
 const cheerio = require('cheerio');
 const { default: inquirer } = require("inquirer");
+const fs = require('fs'); // 파일 시스템 모듈
 
 const connect = async () => {
     return await mysql.createConnection({
@@ -45,6 +46,20 @@ const getMonster = async (url) => {
     }
 };
 
+// 몬스터 정보를 텍스트 파일에 저장하는 함수
+const saveToFile = (monsterdata) => {
+    const filePath = 'monster_data.txt'; // 저장할 파일 경로
+    const data = `Name: ${monsterdata.name}\nLevel: ${monsterdata.level}\nHP: ${monsterdata.hp}\n\n`;
+
+    fs.appendFile(filePath, data, (err) => {
+        if (err) {
+            console.error("파일 저장 중 오류 발생:", err);
+        } else {
+            console.log("몬스터 정보가 텍스트 파일에 저장되었습니다.");
+        }
+    });
+};
+
 const insert = async () => {
     const conn = await connect();
     await createTableIfNotExists(conn);
@@ -67,7 +82,7 @@ const insert = async () => {
 
     // 이미 데이터베이스에 해당 몬스터가 존재하는지 확인
     const [existingMonster] = await conn.execute(
-        `select * from maple_monster where name = ?`,
+        `select * from monster_ where name = ?`,
         [monsterdata.name]
     );
 
@@ -85,6 +100,10 @@ const insert = async () => {
         );
         await conn.commit();
         console.log("몬스터 정보가 삽입되었습니다.");
+        
+        // 텍스트 파일에도 저장
+        saveToFile(monsterdata);
+
     } catch (err) {
         await conn.rollback();
         console.error("데이터 삽입 중 오류 발생:", err);
@@ -97,7 +116,7 @@ inquirer.prompt([
     {
         type: 'input',
         name: 'command',
-        message: '>:'
+        message: '>:' 
     }
 ]).then(answers => {
     if (answers.command.toLowerCase() === 'insert') {
