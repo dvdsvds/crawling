@@ -72,7 +72,7 @@ const insert = async () => {
     );
 
     if (existingMonster.length > 0) {
-        console.log("이미 데이터베이스에 존재하는 몬스터입니다.");
+        console.log("이미 데이터베이스에 존재하는 몬스터입니다."); // 데이터 존재 여부
         await conn.end();
         return;
     }
