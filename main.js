@@ -16,11 +16,11 @@ const connect = async () => {
 const createTableIfNotExists = async (conn) => {
     try {
         await conn.execute(`
-            CREATE TABLE IF NOT EXISTS maple_monster (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                name VARCHAR(255) NOT NULL,
-                level VARCHAR(50),
-                hp VARCHAR(50)
+            create table if not exists monster (
+                id int auto_increment primary key,
+                name text not null,
+                level int,
+                hp int
             )
         `);
     } catch (err) {
