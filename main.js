@@ -28,6 +28,7 @@ const createTableIfNotExists = async (conn) => {
     }
 };
 
+// html에서 특정 정보만 파싱
 const getMonster = async (url) => {
     try {
         const html = await axios.get(url);
