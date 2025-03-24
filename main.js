@@ -4,7 +4,10 @@ const axios = require('axios');
 const cheerio = require('cheerio');
 const { default: inquirer } = require("inquirer");
 const fs = require('fs'); // 파일 시스템 모듈
+const { ChartJSNodeCanvas } = require('chartjs-node-canvas');
+const path = require('path');
 
+// MySQL 연결 함수
 const connect = async () => {
     return await mysql.createConnection({
         host: process.env.DB_HOST,
@@ -14,6 +17,7 @@ const connect = async () => {
     });
 };
 
+// 테이블이 없으면 생성하는 함수
 const createTableIfNotExists = async (conn) => {
     try {
         await conn.execute(`
@@ -29,7 +33,7 @@ const createTableIfNotExists = async (conn) => {
     }
 };
 
-// html에서 특정 정보만 파싱
+// HTML에서 특정 정보 파싱
 const getMonster = async (url) => {
     try {
         const html = await axios.get(url);
@@ -49,7 +53,7 @@ const getMonster = async (url) => {
 // 몬스터 정보를 텍스트 파일에 저장하는 함수
 const saveToFile = (monsterdata) => {
     const filePath = 'monster_data.txt'; // 저장할 파일 경로
-    const data = `Name: ${monsterdata.name}\nLevel: ${monsterdata.level}\nHP: ${monsterdata.hp}\n\n`;
+    const data = `name: ${monsterdata.name}\nlevel: ${monsterdata.level}\nhp: ${monsterdata.hp}\n\n`;
 
     fs.appendFile(filePath, data, (err) => {
         if (err) {
@@ -60,6 +64,55 @@ const saveToFile = (monsterdata) => {
     });
 };
 
+// 레벨 분포 조회 함수
+const getLevelDistribution = async (conn) => {
+    const [rows] = await conn.execute(`select level, count(*) as count from monster_ group by level`);
+    return rows;
+};
+
+// 레벨 분포 시각화 함수
+const visualizeLevelDistribution = async (levelDistribution) => {
+    const width = 800; // 이미지 너비
+    const height = 600; // 이미지 높이
+    const chartJSNodeCanvas = new ChartJSNodeCanvas({ width, height });
+
+    const labels = levelDistribution.map(item => item.level);
+    const data = levelDistribution.map(item => item.count);
+
+    const configuration = {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: '몬스터 레벨 분포',
+                data: data,
+                backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                borderColor: 'rgba(75, 192, 192, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                title: {
+                    display: true,
+                    text: '몬스터 레벨 분포'
+                },
+                legend: {
+                    display: false
+                }
+            }
+        }
+    };
+
+    // 이미지 생성
+    const image = await chartJSNodeCanvas.renderToBuffer(configuration);
+    const filePath = path.join(__dirname, 'level_distribution.png');
+    fs.writeFileSync(filePath, image);
+    console.log('레벨 분포 그래프가 level_distribution.png로 저장되었습니다.');
+};
+
+// 몬스터 정보 삽입 함수
 const insert = async () => {
     const conn = await connect();
     await createTableIfNotExists(conn);
@@ -68,7 +121,7 @@ const insert = async () => {
         {
             type: 'input',
             name: 'url',
-            message: '몬스터 데이터를 가져올 URL을 입력하세요: '
+            message: '몬스터 데이터를 가져올 url을 입력하세요: '
         }
     ]);
 
@@ -95,7 +148,7 @@ const insert = async () => {
     try {
         await conn.beginTransaction();
         await conn.execute(
-            `insert into monster_ (name, level, hp) VALUES (?, ?, ?)`,
+            `insert into monster_ (name, level, hp) values (?, ?, ?)`,
             [monsterdata.name, monsterdata.level, monsterdata.hp]
         );
         await conn.commit();
@@ -112,6 +165,21 @@ const insert = async () => {
     }
 };
 
+// 레벨 분포를 표시하는 함수
+const displayLevelDistribution = async () => {
+    const conn = await connect();
+    
+    try {
+        const levelDistribution = await getLevelDistribution(conn);
+        await visualizeLevelDistribution(levelDistribution);
+    } catch (error) {
+        console.error('레벨 분포 시각화 중 오류 발생:', error);
+    } finally {
+        await conn.end();
+    }
+};
+
+// 사용자 입력 받기
 inquirer.prompt([
     {
         type: 'input',
@@ -121,5 +189,10 @@ inquirer.prompt([
 ]).then(answers => {
     if (answers.command.toLowerCase() === 'insert') {
         insert();
+    } else if (answers.command.toLowerCase() === 'visualize') {
+        displayLevelDistribution();
+    }
+});
+
     }
 });
